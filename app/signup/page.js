@@ -29,37 +29,52 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Join LSU InterHub</h1>
+    <div className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: '#0f0f0f' }}>
+      <div className="p-8 rounded-xl w-full max-w-md border"
+        style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+        <h1 className="text-2xl font-bold mb-6 text-center text-white">
+          Join LSU InterHub
+        </h1>
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
-        {message && <p className="text-green-500 mb-4">{message}</p>}
+        {error && <p className="text-red-400 mb-4">{error}</p>}
+        {message && <p className="text-green-400 mb-4">{message}</p>}
 
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
+          className="w-full p-3 rounded-lg mb-4 focus:outline-none"
+          style={{
+            backgroundColor: '#16213e',
+            border: '1px solid #2d2d4e',
+            color: '#ffffff',
+          }}
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border p-2 rounded mb-4"
+          className="w-full p-3 rounded-lg mb-4 focus:outline-none"
+          style={{
+            backgroundColor: '#16213e',
+            border: '1px solid #2d2d4e',
+            color: '#ffffff',
+          }}
         />
         <button
           onClick={handleSignup}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+          className="w-full p-3 rounded-lg font-medium text-white mb-4"
+          style={{ backgroundColor: '#7c3aed' }}
         >
           Sign Up
         </button>
 
-        <p className="text-center mt-4 text-sm">
+        <p className="text-center text-sm" style={{ color: '#a0a0b0' }}>
           Already have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">
+          <a href="/login" style={{ color: '#7c3aed' }}>
             Log in
           </a>
         </p>
