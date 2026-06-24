@@ -23,18 +23,22 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-blue-700 text-white px-4 py-3 flex justify-between items-center shadow-md">
-      <a href="/feed" className="text-xl font-bold tracking-tight">
+    <nav className="sticky top-0 z-50 px-4 py-3 flex justify-between items-center border-b"
+      style={{ backgroundColor: '#0f0f0f', borderColor: '#2d2d4e' }}>
+      <a href="/feed" className="text-xl font-bold"
+        style={{ color: '#7c3aed' }}>
         LSU InterHub
       </a>
       {user && (
         <div className="flex items-center gap-4">
-          <a href="/profile" className="text-sm hover:underline">
+          <a href="/profile" className="text-sm"
+            style={{ color: '#a0a0b0' }}>
             My Profile
           </a>
           <button
             onClick={handleLogout}
-            className="bg-white text-blue-700 text-sm px-3 py-1 rounded hover:bg-gray-100"
+            className="text-sm px-3 py-1 rounded-lg border"
+            style={{ borderColor: '#7c3aed', color: '#7c3aed' }}
           >
             Logout
           </button>

@@ -30,16 +30,28 @@ export default function FeedPage() {
   }, [])
 
   const fetchPosts = async () => {
-    const { data, error } = await supabase
+    const { data: postsData, error } = await supabase
       .from('posts')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
       console.error(error)
-    } else {
-      setPosts(data)
+      return
     }
+
+    const postsWithUsernames = await Promise.all(
+      postsData.map(async (post) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', post.user_id)
+          .single()
+        return { ...post, username: profile?.username || post.user_id }
+      })
+    )
+
+    setPosts(postsWithUsernames)
   }
 
   const handlePost = async () => {
@@ -75,32 +87,41 @@ export default function FeedPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: '#0f0f0f' }}>
       <Navbar />
-      <p className="p-4 text-center text-gray-500">Loading...</p>
+      <p className="p-4 text-center" style={{ color: '#a0a0b0' }}>Loading...</p>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen pb-6" style={{ backgroundColor: '#0f0f0f' }}>
       <Navbar />
       <div className="max-w-2xl mx-auto p-4">
 
         {/* Create Post */}
-        <div className="bg-white p-4 rounded-xl shadow mb-6 mt-4">
-          <p className="font-semibold text-gray-700 mb-2">Share something with LSU</p>
+        <div className="p-4 rounded-xl mb-6 mt-4 border"
+          style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+          <p className="font-semibold mb-2" style={{ color: '#a0a0b0' }}>
+            Share something with LSU
+          </p>
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind?"
-            className="w-full border border-gray-200 p-3 rounded-lg mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 text-gray-900 placeholder-gray-500"
+            className="w-full p-3 rounded-lg mb-3 resize-none focus:outline-none"
+            style={{
+              backgroundColor: '#16213e',
+              color: '#ffffff',
+              border: '1px solid #2d2d4e',
+            }}
             rows={3}
           />
-          {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+          {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
           <button
             onClick={handlePost}
             disabled={posting}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium"
+            className="px-6 py-2 rounded-lg font-medium text-white"
+            style={{ backgroundColor: posting ? '#6d28d9' : '#7c3aed' }}
           >
             {posting ? 'Posting...' : 'Post'}
           </button>
@@ -109,19 +130,36 @@ export default function FeedPage() {
         {/* Posts */}
         <div className="space-y-4">
           {posts.length === 0 && (
-            <p className="text-gray-400 text-center py-8">No posts yet. Be the first to post!</p>
+            <p className="text-center py-8" style={{ color: '#a0a0b0' }}>
+              No posts yet. Be the first to post!
+            </p>
           )}
           {posts.map((post) => (
-            <div key={post.id} className="bg-white p-4 rounded-xl shadow">
-              <p className="text-gray-800 mb-3">{post.content}</p>
+            <div key={post.id} className="p-4 rounded-xl border"
+              style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+
+              {/* Username */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                  style={{ backgroundColor: '#7c3aed' }}>
+                  {post.username?.[0]?.toUpperCase()}
+                </div>
+                <span className="font-semibold text-sm" style={{ color: '#ffffff' }}>
+                  {post.username}
+                </span>
+              </div>
+
+              <p className="mb-3" style={{ color: '#e0e0e0' }}>{post.content}</p>
+
               <div className="flex justify-between items-center">
-                <p className="text-gray-400 text-xs">
+                <p className="text-xs" style={{ color: '#a0a0b0' }}>
                   {new Date(post.created_at).toLocaleString()}
                 </p>
                 {post.user_id === user.id && (
                   <button
                     onClick={() => handleDelete(post.id)}
-                    className="text-red-400 text-xs hover:text-red-600 hover:underline"
+                    className="text-xs hover:underline"
+                    style={{ color: '#ef4444' }}
                   >
                     Delete
                   </button>
