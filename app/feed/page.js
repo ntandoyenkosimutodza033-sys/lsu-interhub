@@ -23,6 +23,18 @@ export default function FeedPage() {
         return
       }
       setUser(user)
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile || !profile.username) {
+        router.push('/profile')
+        return
+      }
+
       await fetchPosts()
       setLoading(false)
     }
