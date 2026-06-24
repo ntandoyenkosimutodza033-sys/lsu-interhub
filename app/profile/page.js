@@ -49,7 +49,7 @@ export default function ProfilePage() {
         id: user.id,
         email: user.email,
         username: username,
-        university_id: null,
+        university_id: '6cf86b77-d39f-4d34-963a-99941b8232d9',
       })
 
     if (error) {
