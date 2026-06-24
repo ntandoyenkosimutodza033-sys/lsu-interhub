@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Login to LSU InterHub</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">Login to LSU InterHub</h1>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
           Log In
         </button>
 
-        <p className="text-center mt-4 text-sm">
+        <p className="text-center mt-4 text-sm text-gray-900">
           Don't have an account?{' '}
           <a href="/signup" className="text-blue-600 hover:underline">
             Sign up
