@@ -93,7 +93,7 @@ export default function FeedPage() {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind?"
-            className="w-full border border-gray-200 p-3 rounded-lg mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
+            className="w-full border border-gray-200 p-3 rounded-lg mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 text-gray-900 placeholder-gray-500"
             rows={3}
           />
           {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
