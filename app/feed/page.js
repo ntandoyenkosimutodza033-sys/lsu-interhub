@@ -74,9 +74,8 @@ export default function FeedPage() {
       })
     )
 
-    setPosts(postsWithUsernames)
+    setPosts([...postsWithUsernames])
 
-    // Fetch reactions for all posts
     const { data: reactionsData } = await supabase
       .from('reactions')
       .select('*')
@@ -88,7 +87,7 @@ export default function FeedPage() {
         if (!grouped[r.post_id][r.emoji]) grouped[r.post_id][r.emoji] = []
         grouped[r.post_id][r.emoji].push(r.user_id)
       })
-      setReactions(grouped)
+      setReactions({ ...grouped })
     }
   }
 
@@ -116,8 +115,18 @@ export default function FeedPage() {
     await fetchPosts()
   }
 
-  const handleEdit = async (postId) => {
-    await supabase.from('posts').update({ content: editContent }).eq('id', postId).eq('user_id', user.id)
+ const handleEdit = async (postId) => {
+    const { error } = await supabase
+      .from('posts')
+      .update({ content: editContent, edited: true })
+      .eq('id', postId)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error(error)
+      return
+    }
+
     setEditingPostId(null)
     setEditContent('')
     await fetchPosts()
@@ -312,14 +321,33 @@ export default function FeedPage() {
                 <div className="mb-3">
                   <textarea
                     value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
+                    onChange={(e) => {
+                      console.log('typing:', e.target.value)
+                      setEditContent(e.target.value)
+                    }}
                     className="w-full p-3 rounded-lg resize-none focus:outline-none"
                     style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #7c3aed' }}
                     rows={3}
                   />
                   <div className="flex gap-2 mt-2">
                     <button
-                      onClick={() => handleEdit(post.id)}
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from('posts')
+                          .update({ content: editContent, edited: true })
+                          .eq('id', post.id)
+                          .eq('user_id', user.id)
+                        if (!error) {
+                          const updatedPosts = posts.map(p =>
+                            p.id === post.id
+                              ? { ...p, content: editContent, edited: true }
+                              : p
+                          )
+                          setPosts(updatedPosts)
+                          setEditingPostId(null)
+                          setEditContent('')
+                        }
+                      }}
                       className="px-4 py-1 rounded-lg text-sm text-white"
                       style={{ backgroundColor: '#7c3aed' }}
                     >
@@ -335,7 +363,12 @@ export default function FeedPage() {
                   </div>
                 </div>
               ) : (
-                <p className="mb-3" style={{ color: '#e0e0e0' }}>{post.content}</p>
+                <div className="mb-3">
+                  <p style={{ color: '#e0e0e0' }}>{post.content}</p>
+                  {post.edited && (
+                    <p className="text-xs mt-1 text-right" style={{ color: '#a0a0b0' }}>edited</p>
+                  )}
+                </div>
               )}
 
               {/* Reaction Summary */}
