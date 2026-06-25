@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Navbar from '../components/Navbar'
+import ReactMarkdown from 'react-markdown'
 
 const EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
 const TABS = ['Trending', 'For You', 'Updates']
@@ -285,11 +286,14 @@ export default function FeedPage() {
                 rows={3}
               />
               <div className="flex justify-between items-center mb-3">
+                <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                  Tip: use - for bullets, **bold**, _italic_
+                </p>
                 <p className="text-xs" style={{ color: content.length > 900 ? '#ef4444' : '#a0a0b0' }}>
                   {content.length}/1000
                 </p>
-                {error && <p className="text-red-400 text-sm">{error}</p>}
               </div>
+              {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
               <button
                 onClick={handlePost}
                 disabled={posting || !content.trim()}
@@ -411,7 +415,20 @@ export default function FeedPage() {
                     </div>
                   ) : (
                     <div className="mb-3">
-                      <p style={{ color: '#e0e0e0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
+                      <div style={{ color: '#e0e0e0', wordBreak: 'break-word' }} className="text-sm markdown-content">
+  <ReactMarkdown
+    components={{
+      ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
+      ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
+      li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem', color: '#e0e0e0' }} {...props} />,
+      p: ({node, ...props}) => <p style={{ marginBottom: '0.5rem' }} {...props} />,
+      strong: ({node, ...props}) => <strong style={{ color: '#ffffff', fontWeight: 'bold' }} {...props} />,
+      em: ({node, ...props}) => <em style={{ color: '#e0e0e0' }} {...props} />,
+    }}
+  >
+    {post.content}
+  </ReactMarkdown>
+</div>
                       {post.edited && (
                         <p className="text-xs mt-1 text-right" style={{ color: '#a0a0b0' }}>edited</p>
                       )}
