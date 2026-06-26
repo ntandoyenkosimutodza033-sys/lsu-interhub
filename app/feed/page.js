@@ -152,8 +152,27 @@ export default function FeedPage() {
       })
       setReactions({ ...grouped })
     }
-  }
+  
+   const { data: commentCountData } = await supabase
+      .from('comments')
+      .select('post_id')
 
+    if (commentCountData) {
+      const countMap = {}
+      commentCountData.forEach((c) => {
+        countMap[c.post_id] = (countMap[c.post_id] || 0) + 1
+      })
+      setComments((prev) => {
+        const updated = { ...prev }
+        Object.keys(countMap).forEach((postId) => {
+          if (!updated[postId]) {
+            updated[postId] = Array(countMap[postId]).fill({ id: postId, username: '', content: '' })
+          }
+        })
+        return updated
+      })
+    }
+  }
   const fetchAnnouncements = async () => {
     const { data, error } = await supabase
       .from('announcements')
@@ -454,7 +473,10 @@ export default function FeedPage() {
                                 ✏️ Edit
                               </button>
                               <button
-                                onClick={() => handleDelete(post.id)}
+                                onClick={() => {
+                                  if (!window.confirm('Delete this post?')) return
+                                  handleDelete(post.id)
+                                }}
                                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:opacity-75"
                               >
                                 🗑️ Delete
@@ -608,15 +630,30 @@ export default function FeedPage() {
                         <p className="text-xs mb-2" style={{ color: '#a0a0b0' }}>No comments yet.</p>
                       )}
                       {comments[post.id]?.map((comment) => (
-                        <div key={comment.id} className="flex gap-2 mb-2">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ backgroundColor: '#7c3aed' }}>
-                            {comment.username?.[0]?.toUpperCase()}
+                        <div key={comment.id} className="flex gap-2 mb-2 justify-between items-start">
+                          <div className="flex gap-2">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                              style={{ backgroundColor: '#7c3aed' }}>
+                              {comment.username?.[0]?.toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-white">{comment.username} </span>
+                              <span className="text-xs" style={{ color: '#e0e0e0' }}>{comment.content}</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-xs font-semibold text-white">{comment.username} </span>
-                            <span className="text-xs" style={{ color: '#e0e0e0' }}>{comment.content}</span>
-                          </div>
+                          {comment.user_id === user.id && (
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm('Delete this comment?')) return
+                                await supabase.from('comments').delete().eq('id', comment.id)
+                                await fetchComments(post.id)
+                              }}
+                              className="text-xs flex-shrink-0"
+                              style={{ color: '#ef4444' }}
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
                       ))}
                       <div className="flex gap-2 mt-2">
