@@ -7,15 +7,52 @@ import Navbar from '../components/Navbar'
 import ReactMarkdown from 'react-markdown'
 
 const EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
+const timeAgo = (dateString) => {
+  const now = new Date()
+  const date = new Date(dateString)
+  const seconds = Math.floor((now - date) / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  const weeks = Math.floor(days / 7)
+
+  if (seconds < 60) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  if (weeks === 1) return 'Last week'
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+const expiresIn = (dateString) => {
+  const now = new Date()
+  const date = new Date(dateString)
+  const diff = date - now
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+
+  if (diff < 0) return 'Expired'
+  if (days === 0) return 'Expires today'
+  if (days === 1) return 'Expires tomorrow'
+  if (days < 7) return `Expires in ${days} days`
+  if (days < 14) return 'Expires next week'
+  return `Expires in ${Math.ceil(days / 7)} weeks`
+}
 const TABS = ['Trending', 'For You', 'Updates']
 
 export default function FeedPage() {
   const [user, setUser] = useState(null)
   const [posts, setPosts] = useState([])
   const [announcements, setAnnouncements] = useState([])
+  const [pinnedAnnouncements, setPinnedAnnouncements] = useState([])
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
+  const [bannerVisible, setBannerVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [content, setContent] = useState('')
   const [announcementTitle, setAnnouncementTitle] = useState('')
   const [announcementContent, setAnnouncementContent] = useState('')
+  const [pinDuration, setPinDuration] = useState(7)
   const [activeTab, setActiveTab] = useState('Trending')
   const [loading, setLoading] = useState(true)
   const [posting, setPosting] = useState(false)
@@ -43,7 +80,7 @@ export default function FeedPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('username')
+        .select('username, role')
         .eq('id', user.id)
         .single()
 
@@ -52,12 +89,31 @@ export default function FeedPage() {
         return
       }
 
+      if (profile.role === 'admin') {
+        setIsAdmin(true)
+      }
+
       await fetchPosts()
       await fetchAnnouncements()
+      await fetchPinnedAnnouncements()
       setLoading(false)
     }
     initialize()
   }, [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setBannerVisible(false)
+      } else {
+        setBannerVisible(true)
+      }
+      setLastScrollY(currentScrollY)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [lastScrollY])
 
   const fetchPosts = async () => {
     const { data: postsData, error } = await supabase
@@ -108,8 +164,22 @@ export default function FeedPage() {
       console.error(error)
       return
     }
-
     setAnnouncements(data)
+  }
+
+  const fetchPinnedAnnouncements = async () => {
+    const now = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .gt('pinned_until', now)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error(error)
+      return
+    }
+    setPinnedAnnouncements(data)
   }
 
   const handlePost = async () => {
@@ -134,12 +204,18 @@ export default function FeedPage() {
     if (!announcementTitle.trim() || !announcementContent.trim()) return
     setPosting(true)
 
+    const pinnedUntil = new Date()
+    pinnedUntil.setDate(pinnedUntil.getDate() + pinDuration)
+
     const { error } = await supabase
       .from('announcements')
       .insert({
         user_id: user.id,
         title: announcementTitle,
         content: announcementContent,
+        pin_duration: pinDuration,
+        pinned_until: pinnedUntil.toISOString(),
+        community: 'LSU InterHub',
       })
 
     if (error) {
@@ -147,7 +223,9 @@ export default function FeedPage() {
     } else {
       setAnnouncementTitle('')
       setAnnouncementContent('')
+      setPinDuration(7)
       await fetchAnnouncements()
+      await fetchPinnedAnnouncements()
     }
     setPosting(false)
   }
@@ -266,6 +344,31 @@ export default function FeedPage() {
         {/* TRENDING TAB */}
         {activeTab === 'Trending' && (
           <>
+            {/* Pinned Announcements Banner */}
+            {pinnedAnnouncements.length > 0 && bannerVisible && (
+              <div className="mb-4 transition-all duration-300">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-semibold" style={{ color: '#7c3aed' }}>📌 PINNED</span>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                  {pinnedAnnouncements.map((announcement) => (
+                    <button
+                      key={announcement.id}
+                      onClick={() => setSelectedAnnouncement(announcement)}
+                      className="flex-shrink-0 p-3 rounded-xl border text-left"
+                      style={{ backgroundColor: '#1a1a2e', borderColor: '#7c3aed', minWidth: '200px', maxWidth: '200px' }}
+                    >
+                      <p className="text-xs font-semibold text-white truncate">{announcement.title}</p>
+                      <p className="text-xs mt-1" style={{ color: '#a0a0b0' }}>{announcement.community}</p>
+                      <p className="text-xs mt-1" style={{ color: '#a0a0b0' }}>
+                        {expiresIn(announcement.pinned_until)}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Create Post */}
             <div className="p-4 rounded-xl mb-6 border"
               style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
@@ -282,7 +385,7 @@ export default function FeedPage() {
                 }}
                 placeholder="What's on your mind? (Ctrl+Enter to post)"
                 className="w-full p-3 rounded-lg mb-2 resize-none focus:outline-none"
-                style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e', whiteSpace: 'pre-wrap' }}
+                style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
                 rows={3}
               />
               <div className="flex justify-between items-center mb-3">
@@ -325,7 +428,7 @@ export default function FeedPage() {
                       <div>
                         <p className="font-semibold text-sm text-white">{post.username}</p>
                         <p className="text-xs" style={{ color: '#a0a0b0' }}>
-                          {new Date(post.created_at).toLocaleString()}
+                          {timeAgo(post.created_at)}
                         </p>
                       </div>
                     </div>
@@ -415,20 +518,20 @@ export default function FeedPage() {
                     </div>
                   ) : (
                     <div className="mb-3">
-                      <div style={{ color: '#e0e0e0', wordBreak: 'break-word' }} className="text-sm markdown-content">
-  <ReactMarkdown
-    components={{
-      ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
-      ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
-      li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem', color: '#e0e0e0' }} {...props} />,
-      p: ({node, ...props}) => <p style={{ marginBottom: '0.5rem' }} {...props} />,
-      strong: ({node, ...props}) => <strong style={{ color: '#ffffff', fontWeight: 'bold' }} {...props} />,
-      em: ({node, ...props}) => <em style={{ color: '#e0e0e0' }} {...props} />,
-    }}
-  >
-    {post.content}
-  </ReactMarkdown>
-</div>
+                      <div style={{ color: '#e0e0e0', wordBreak: 'break-word' }} className="text-sm">
+                        <ReactMarkdown
+                          components={{
+                            ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
+                            ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
+                            li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem', color: '#e0e0e0' }} {...props} />,
+                            p: ({node, ...props}) => <p style={{ marginBottom: '0.5rem' }} {...props} />,
+                            strong: ({node, ...props}) => <strong style={{ color: '#ffffff', fontWeight: 'bold' }} {...props} />,
+                            em: ({node, ...props}) => <em style={{ color: '#e0e0e0' }} {...props} />,
+                          }}
+                        >
+                          {post.content}
+                        </ReactMarkdown>
+                      </div>
                       {post.edited && (
                         <p className="text-xs mt-1 text-right" style={{ color: '#a0a0b0' }}>edited</p>
                       )}
@@ -555,37 +658,60 @@ export default function FeedPage() {
         {/* UPDATES TAB */}
         {activeTab === 'Updates' && (
           <>
-            {/* Post Announcement */}
-            <div className="p-4 rounded-xl mb-6 border"
-              style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
-              <p className="font-semibold mb-2" style={{ color: '#a0a0b0' }}>
-                Post an Announcement
-              </p>
-              <input
-                type="text"
-                value={announcementTitle}
-                onChange={(e) => setAnnouncementTitle(e.target.value)}
-                placeholder="Title"
-                className="w-full p-3 rounded-lg mb-3 focus:outline-none"
-                style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
-              />
-              <textarea
-                value={announcementContent}
-                onChange={(e) => setAnnouncementContent(e.target.value)}
-                placeholder="Write your announcement..."
-                className="w-full p-3 rounded-lg mb-3 resize-none focus:outline-none"
-                style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
-                rows={3}
-              />
-              <button
-                onClick={handleAnnouncement}
-                disabled={posting}
-                className="px-6 py-2 rounded-lg font-medium text-white"
-                style={{ backgroundColor: posting ? '#6d28d9' : '#7c3aed' }}
-              >
-                {posting ? 'Posting...' : 'Post Announcement'}
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="p-4 rounded-xl mb-6 border"
+                style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">📢</span>
+                  <p className="font-semibold text-white">Post an Announcement</p>
+                  <span className="text-xs px-2 py-0.5 rounded-full text-white"
+                    style={{ backgroundColor: '#7c3aed' }}>Admin</span>
+                </div>
+                <input
+                  type="text"
+                  value={announcementTitle}
+                  onChange={(e) => setAnnouncementTitle(e.target.value)}
+                  placeholder="Title"
+                  className="w-full p-3 rounded-lg mb-3 focus:outline-none"
+                  style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
+                />
+                <textarea
+                  value={announcementContent}
+                  onChange={(e) => setAnnouncementContent(e.target.value)}
+                  placeholder="Write your announcement..."
+                  className="w-full p-3 rounded-lg mb-3 resize-none focus:outline-none"
+                  style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
+                  rows={3}
+                />
+                <div className="mb-3">
+                  <p className="text-xs mb-2" style={{ color: '#a0a0b0' }}>Pin duration</p>
+                  <div className="flex gap-2">
+                    {[3, 7, 14, 28].map((days) => (
+                      <button
+                        key={days}
+                        onClick={() => setPinDuration(days)}
+                        className="px-3 py-1 rounded-lg text-sm"
+                        style={{
+                          backgroundColor: pinDuration === days ? '#7c3aed' : '#16213e',
+                          color: '#ffffff',
+                          border: `1px solid ${pinDuration === days ? '#7c3aed' : '#2d2d4e'}`
+                        }}
+                      >
+                        {days}d
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={handleAnnouncement}
+                  disabled={posting}
+                  className="px-6 py-2 rounded-lg font-medium text-white"
+                  style={{ backgroundColor: posting ? '#6d28d9' : '#7c3aed' }}
+                >
+                  {posting ? 'Posting...' : 'Post Announcement'}
+                </button>
+              </div>
+            )}
 
             {/* Announcements List */}
             <div className="space-y-4">
@@ -601,10 +727,17 @@ export default function FeedPage() {
                     <span className="text-lg">📢</span>
                     <p className="font-bold text-white">{announcement.title}</p>
                   </div>
-                  <p className="text-sm mb-3" style={{ color: '#e0e0e0' }}>{announcement.content}</p>
-                  <p className="text-xs" style={{ color: '#a0a0b0' }}>
-                    {new Date(announcement.created_at).toLocaleString()}
+                  <p className="text-sm mb-3" style={{ color: '#e0e0e0', wordBreak: 'break-word' }}>
+                    {announcement.content}
                   </p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                      {announcement.community}
+                    </p>
+                    <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                      {timeAgo(announcement.created_at)}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -612,6 +745,54 @@ export default function FeedPage() {
         )}
 
       </div>
+
+      {/* Announcement Modal */}
+      {selectedAnnouncement && (
+        <div className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setSelectedAnnouncement(null)}>
+          <div className="p-6 rounded-xl border w-80 mx-4"
+            style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📢</span>
+              <p className="font-bold text-white">{selectedAnnouncement.title}</p>
+            </div>
+            <p className="text-sm mb-3" style={{ color: '#e0e0e0' }}>
+              {selectedAnnouncement.content}
+            </p>
+            <div className="border-t pt-3 mb-4" style={{ borderColor: '#2d2d4e' }}>
+              <p className="text-xs mb-1" style={{ color: '#a0a0b0' }}>
+                <span className="text-white">Community: </span>{selectedAnnouncement.community}
+              </p>
+              <p className="text-xs mb-1" style={{ color: '#a0a0b0' }}>
+                <span className="text-white">Posted: </span>
+                {new Date(selectedAnnouncement.created_at).toLocaleString()}
+              </p>
+              <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                <span className="text-white">Expires: </span>
+                {expiresIn(selectedAnnouncement.pinned_until)}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setSelectedAnnouncement(null); setActiveTab('Updates') }}
+                className="flex-1 py-2 rounded-lg text-sm text-white"
+                style={{ backgroundColor: '#7c3aed' }}
+              >
+                See All Updates
+              </button>
+              <button
+                onClick={() => setSelectedAnnouncement(null)}
+                className="flex-1 py-2 rounded-lg text-sm border"
+                style={{ borderColor: '#2d2d4e', color: '#a0a0b0' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Details Modal */}
       {detailsPost && (
