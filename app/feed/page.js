@@ -757,26 +757,68 @@ export default function FeedPage() {
                   No announcements yet.
                 </p>
               )}
-              {announcements.map((announcement) => (
-                <div key={announcement.id} className="p-4 rounded-xl border"
-                  style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">📢</span>
-                    <p className="font-bold text-white">{announcement.title}</p>
+              {announcements.map((announcement) => {
+                const isExpired = new Date(announcement.pinned_until) < new Date()
+                return (
+                  <div key={announcement.id} className="p-4 rounded-xl border"
+                    style={{
+                      backgroundColor: '#1a1a2e',
+                      borderColor: isExpired ? '#2d2d4e' : '#7c3aed',
+                    }}>
+                    <div style={{ opacity: isExpired ? 0.5 : 1 }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">📢</span>
+                        <p className="font-bold text-white">{announcement.title}</p>
+                        {isExpired && (
+                          <span className="text-xs px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: '#2d2d4e', color: '#a0a0b0' }}>
+                            Expired
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm mb-3" style={{ color: '#e0e0e0', wordBreak: 'break-word' }}>
+                        {announcement.content}
+                      </p>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                          {announcement.community}
+                        </p>
+                        <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                          {timeAgo(announcement.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Repin - Admin Only */}
+                    {isAdmin && isExpired && (
+                      <div className="mt-3 pt-3 border-t" style={{ borderColor: '#2d2d4e' }}>
+                        <p className="text-xs mb-2" style={{ color: '#a0a0b0' }}>Repin for:</p>
+                        <div className="flex gap-2">
+                          {[3, 7, 14, 28].map((days) => (
+                            <button
+                              key={days}
+                              onClick={async () => {
+                                const pinnedUntil = new Date()
+                                pinnedUntil.setDate(pinnedUntil.getDate() + days)
+                                await supabase
+                                  .from('announcements')
+                                  .update({ pinned_until: pinnedUntil.toISOString() })
+                                  .eq('id', announcement.id)
+                                await fetchAnnouncements()
+                                await fetchPinnedAnnouncements()
+                              }}
+                              className="px-3 py-1 rounded-lg text-xs text-white"
+                              style={{ backgroundColor: '#7c3aed' }}
+                            >
+                              {days}d
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm mb-3" style={{ color: '#e0e0e0', wordBreak: 'break-word' }}>
-                    {announcement.content}
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs" style={{ color: '#a0a0b0' }}>
-                      {announcement.community}
-                    </p>
-                    <p className="text-xs" style={{ color: '#a0a0b0' }}>
-                      {timeAgo(announcement.created_at)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </>
         )}
