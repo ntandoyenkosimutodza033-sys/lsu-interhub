@@ -5,9 +5,11 @@ import { createClient } from '../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Navbar from '../components/Navbar'
 import ReactMarkdown from 'react-markdown'
+import { Heart, MessageCircle, Share2, MoreHorizontal, Pencil, Trash2, Info } from 'lucide-react'
 
 const EMOJIS = ['❤️', '😂', '😮', '😢', '👍', '🔥']
 const TABS = ['For You', 'Trending', 'Updates']
+const APP_URL = 'https://lsu-interhub.vercel.app'
 
 const ROTATING_PROMPTS = [
   "How are you feeling today?",
@@ -19,6 +21,17 @@ const ROTATING_PROMPTS = [
   "Any tips for surviving exam season?",
   "What's happening around campus today?",
 ]
+
+const ACCENT_COLORS = ['#7c3aed', '#3b82f6', '#22c55e', '#f97316', '#ec4899', '#14b8a6', '#ef4444', '#eab308']
+
+const getAccentColor = (username) => {
+  if (!username) return ACCENT_COLORS[0]
+  let hash = 0
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return ACCENT_COLORS[Math.abs(hash) % ACCENT_COLORS.length]
+}
 
 const timeAgo = (dateString) => {
   const now = new Date()
@@ -347,9 +360,23 @@ export default function FeedPage() {
     await fetchComments(postId)
   }
 
-  const handleShare = (post) => {
-    navigator.clipboard.writeText(post.content)
-    alert('Post copied to clipboard!')
+  const handleShare = async (post) => {
+    const shareText = `${post.content}\n\nShared from LSU InterHub — ${APP_URL}`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'LSU InterHub',
+          text: `${post.content}\n\nShared from LSU InterHub`,
+          url: APP_URL,
+        })
+      } catch (err) {
+        // user cancelled share, do nothing
+      }
+    } else {
+      navigator.clipboard.writeText(shareText)
+      alert('Post and app link copied to clipboard!')
+    }
   }
 
   const totalReactions = (postId) => {
@@ -572,250 +599,265 @@ export default function FeedPage() {
                 No posts yet. Be the first to post!
               </p>
             )}
-            {posts.map((post) => (
-              <div key={post.id} className="p-4 rounded-xl border"
-                style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+            {posts.map((post) => {
+              const accentColor = getAccentColor(post.username)
+              return (
+                <div key={post.id} className="rounded-xl overflow-hidden transition-transform hover:-translate-y-0.5"
+                  style={{
+                    backgroundColor: '#181826',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                    borderLeft: `3px solid ${accentColor}`,
+                  }}>
+                  <div className="p-4">
 
-                {/* Post Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                      style={{ backgroundColor: '#7c3aed' }}>
-                      {post.username?.[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm text-white">{post.username}</p>
-                      <p className="text-xs" style={{ color: '#a0a0b0' }}>
-                        {timeAgo(post.created_at)}
-                      </p>
-                    </div>
-                  </div>
+                    {/* Post Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                          style={{ backgroundColor: accentColor }}>
+                          {post.username?.[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-white">{post.username}</p>
+                          <p className="text-xs" style={{ color: '#a0a0b0' }}>
+                            {timeAgo(post.created_at)}
+                          </p>
+                        </div>
+                      </div>
 
-                  {/* Three Dot Menu */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
-                      className="text-lg px-2"
-                      style={{ color: '#a0a0b0' }}
-                    >
-                      ···
-                    </button>
-                    {openMenuId === post.id && (
-                      <div className="absolute right-0 top-8 rounded-xl border z-10 w-36"
-                        style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
-                        {post.user_id === user.id ? (
-                          <>
-                            <button
-                              onClick={() => { setEditingPostId(post.id); setEditContent(post.content); setOpenMenuId(null) }}
-                              className="w-full text-left px-4 py-2 text-sm text-white hover:opacity-75"
-                            >
-                              ✏️ Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!window.confirm('Delete this post?')) return
-                                handleDelete(post.id)
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-400 hover:opacity-75"
-                            >
-                              🗑️ Delete
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => { setDetailsPost(post); setOpenMenuId(null) }}
-                            className="w-full text-left px-4 py-2 text-sm text-white hover:opacity-75"
-                          >
-                            ℹ️ Details
-                          </button>
+                      {/* Three Dot Menu */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                          className="p-1 rounded-lg transition-colors"
+                          style={{ color: '#a0a0b0' }}
+                        >
+                          <MoreHorizontal size={18} />
+                        </button>
+                        {openMenuId === post.id && (
+                          <div className="absolute right-0 top-8 rounded-xl border z-10 w-36 overflow-hidden"
+                            style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+                            {post.user_id === user.id ? (
+                              <>
+                                <button
+                                  onClick={() => { setEditingPostId(post.id); setEditContent(post.content); setOpenMenuId(null) }}
+                                  className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-white hover:bg-white/5"
+                                >
+                                  <Pencil size={14} /> Edit
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (!window.confirm('Delete this post?')) return
+                                    handleDelete(post.id)
+                                  }}
+                                  className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5"
+                                >
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => { setDetailsPost(post); setOpenMenuId(null) }}
+                                className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-white hover:bg-white/5"
+                              >
+                                <Info size={14} /> Details
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Edit Mode */}
-                {editingPostId === post.id ? (
-                  <div className="mb-3">
-                    <textarea
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full p-3 rounded-lg resize-none focus:outline-none"
-                      style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #7c3aed' }}
-                      rows={3}
-                    />
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={async () => {
-                          const { error } = await supabase
-                            .from('posts')
-                            .update({ content: editContent, edited: true })
-                            .eq('id', post.id)
-                            .eq('user_id', user.id)
-                          if (!error) {
-                            const updatedPosts = posts.map(p =>
-                              p.id === post.id
-                                ? { ...p, content: editContent, edited: true }
-                                : p
-                            )
-                            setPosts(updatedPosts)
-                            setEditingPostId(null)
-                            setEditContent('')
-                          }
-                        }}
-                        className="px-4 py-1 rounded-lg text-sm text-white"
-                        style={{ backgroundColor: '#7c3aed' }}
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => setEditingPostId(null)}
-                        className="px-4 py-1 rounded-lg text-sm"
-                        style={{ color: '#a0a0b0', border: '1px solid #2d2d4e' }}
-                      >
-                        Cancel
-                      </button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="mb-3">
-                    <div style={{ color: '#e0e0e0', wordBreak: 'break-word' }} className="text-sm">
-                      <ReactMarkdown
-                        components={{
-                          ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
-                          ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
-                          li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem', color: '#e0e0e0' }} {...props} />,
-                          p: ({node, ...props}) => <p style={{ marginBottom: '0.5rem' }} {...props} />,
-                          strong: ({node, ...props}) => <strong style={{ color: '#ffffff', fontWeight: 'bold' }} {...props} />,
-                          em: ({node, ...props}) => <em style={{ color: '#e0e0e0' }} {...props} />,
-                        }}
-                      >
-                        {post.content}
-                      </ReactMarkdown>
-                    </div>
-                    {post.edited && (
-                      <p className="text-xs mt-1 text-right" style={{ color: '#a0a0b0' }}>edited</p>
+
+                    {/* Edit Mode */}
+                    {editingPostId === post.id ? (
+                      <div className="mb-3">
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full p-3 rounded-lg resize-none focus:outline-none"
+                          style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #7c3aed' }}
+                          rows={3}
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={async () => {
+                              const { error } = await supabase
+                                .from('posts')
+                                .update({ content: editContent, edited: true })
+                                .eq('id', post.id)
+                                .eq('user_id', user.id)
+                              if (!error) {
+                                const updatedPosts = posts.map(p =>
+                                  p.id === post.id
+                                    ? { ...p, content: editContent, edited: true }
+                                    : p
+                                )
+                                setPosts(updatedPosts)
+                                setEditingPostId(null)
+                                setEditContent('')
+                              }
+                            }}
+                            className="px-4 py-1 rounded-lg text-sm text-white"
+                            style={{ backgroundColor: '#7c3aed' }}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingPostId(null)}
+                            className="px-4 py-1 rounded-lg text-sm"
+                            style={{ color: '#a0a0b0', border: '1px solid #2d2d4e' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-3">
+                        <div style={{ color: '#e0e0e0', wordBreak: 'break-word' }} className="text-sm">
+                          <ReactMarkdown
+                            components={{
+                              ul: ({node, ...props}) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
+                              ol: ({node, ...props}) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5rem', marginBottom: '0.5rem' }} {...props} />,
+                              li: ({node, ...props}) => <li style={{ marginBottom: '0.25rem', color: '#e0e0e0' }} {...props} />,
+                              p: ({node, ...props}) => <p style={{ marginBottom: '0.5rem' }} {...props} />,
+                              strong: ({node, ...props}) => <strong style={{ color: '#ffffff', fontWeight: 'bold' }} {...props} />,
+                              em: ({node, ...props}) => <em style={{ color: '#e0e0e0' }} {...props} />,
+                            }}
+                          >
+                            {post.content}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                )}
 
-                {/* Reaction Summary */}
-                {reactions[post.id] && Object.keys(reactions[post.id]).length > 0 && (
-                  <div className="flex gap-1 mb-2 flex-wrap">
-                    {Object.entries(reactions[post.id]).map(([emoji, users]) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleReaction(post.id, emoji)}
-                        className="text-xs px-2 py-1 rounded-full border"
-                        style={{
-                          borderColor: users.includes(user.id) ? '#7c3aed' : '#2d2d4e',
-                          backgroundColor: users.includes(user.id) ? '#2d1b69' : 'transparent',
-                          color: '#ffffff'
-                        }}
-                      >
-                        {emoji} {users.length}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Action Bar */}
-                <div className="flex items-center gap-4 pt-2 border-t" style={{ borderColor: '#2d2d4e' }}>
-                  <div className="relative">
-                    <button
-                      onClick={() => setOpenEmojiId(openEmojiId === post.id ? null : post.id)}
-                      className="flex items-center gap-1 text-sm"
-                      style={{ color: '#a0a0b0' }}
-                    >
-                      ❤️ {totalReactions(post.id) || ''}
-                    </button>
-                    {openEmojiId === post.id && (
-                      <div className="absolute left-0 bottom-8 flex gap-1 p-2 rounded-xl border z-10"
-                        style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
-                        {EMOJIS.map((emoji) => (
+                    {/* Reaction Summary */}
+                    {reactions[post.id] && Object.keys(reactions[post.id]).length > 0 && (
+                      <div className="flex gap-1 mb-2 flex-wrap">
+                        {Object.entries(reactions[post.id]).map(([emoji, users]) => (
                           <button
                             key={emoji}
                             onClick={() => handleReaction(post.id, emoji)}
-                            className="text-xl hover:scale-125 transition-transform"
+                            className="text-xs px-2 py-1 rounded-full border"
+                            style={{
+                              borderColor: users.includes(user.id) ? accentColor : '#2d2d4e',
+                              backgroundColor: users.includes(user.id) ? `${accentColor}22` : 'transparent',
+                              color: '#ffffff'
+                            }}
                           >
-                            {emoji}
+                            {emoji} {users.length}
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  <button
-                    onClick={() => handleOpenComments(post.id)}
-                    className="flex items-center gap-1 text-sm"
-                    style={{ color: '#a0a0b0' }}
-                  >
-                    💬 {comments[post.id]?.length || ''}
-                  </button>
-
-                  <button
-                    onClick={() => handleShare(post)}
-                    className="flex items-center gap-1 text-sm"
-                    style={{ color: '#a0a0b0' }}
-                  >
-                    🔗 Share
-                  </button>
-                </div>
-
-                {/* Comments Section */}
-                {openCommentsId === post.id && (
-                  <div className="mt-3 pt-3 border-t" style={{ borderColor: '#2d2d4e' }}>
-                    {comments[post.id]?.length === 0 && (
-                      <p className="text-xs mb-2" style={{ color: '#a0a0b0' }}>No comments yet.</p>
-                    )}
-                    {comments[post.id]?.map((comment) => (
-                      <div key={comment.id} className="flex gap-2 mb-2 justify-between items-start">
-                        <div className="flex gap-2">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ backgroundColor: '#7c3aed' }}>
-                            {comment.username?.[0]?.toUpperCase()}
-                          </div>
-                          <div>
-                            <span className="text-xs font-semibold text-white">{comment.username} </span>
-                            <span className="text-xs" style={{ color: '#e0e0e0' }}>{comment.content}</span>
-                          </div>
-                        </div>
-                        {comment.user_id === user.id && (
-                          <button
-                            onClick={async () => {
-                              if (!window.confirm('Delete this comment?')) return
-                              await supabase.from('comments').delete().eq('id', comment.id)
-                              await fetchComments(post.id)
-                            }}
-                            className="text-xs flex-shrink-0"
-                            style={{ color: '#ef4444' }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="text"
-                        value={commentInput}
-                        onChange={(e) => setCommentInput(e.target.value)}
-                        placeholder="Write a comment..."
-                        className="flex-1 p-2 rounded-lg text-sm focus:outline-none"
-                        style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
-                      />
+                  {/* Action Bar */}
+                  <div className="flex items-center gap-4 px-4 py-3 border-t"
+                    style={{ borderColor: '#22222f', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                    <div className="relative">
                       <button
-                        onClick={() => handleAddComment(post.id)}
-                        className="px-3 py-2 rounded-lg text-sm text-white"
-                        style={{ backgroundColor: '#7c3aed' }}
+                        onClick={() => setOpenEmojiId(openEmojiId === post.id ? null : post.id)}
+                        className="flex items-center gap-1.5 text-sm transition-colors"
+                        style={{ color: totalReactions(post.id) > 0 ? accentColor : '#a0a0b0' }}
                       >
-                        Send
+                        <Heart size={16} fill={totalReactions(post.id) > 0 ? accentColor : 'none'} />
+                        {totalReactions(post.id) || ''}
                       </button>
+                      {openEmojiId === post.id && (
+                        <div className="absolute left-0 bottom-8 flex gap-1 p-2 rounded-xl border z-10"
+                          style={{ backgroundColor: '#1a1a2e', borderColor: '#2d2d4e' }}>
+                          {EMOJIS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => handleReaction(post.id, emoji)}
+                              className="text-xl hover:scale-125 transition-transform"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
+
+                    <button
+                      onClick={() => handleOpenComments(post.id)}
+                      className="flex items-center gap-1.5 text-sm"
+                      style={{ color: '#a0a0b0' }}
+                    >
+                      <MessageCircle size={16} />
+                      {comments[post.id]?.length || ''}
+                    </button>
+
+                    <button
+                      onClick={() => handleShare(post)}
+                      className="flex items-center gap-1.5 text-sm"
+                      style={{ color: '#a0a0b0' }}
+                    >
+                      <Share2 size={16} />
+                    </button>
+
+                    <div className="flex-1" />
+
+                    {post.edited && (
+                      <span className="text-xs italic" style={{ color: '#6b6b7d' }}>edited</span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Comments Section */}
+                  {openCommentsId === post.id && (
+                    <div className="px-4 py-3 border-t" style={{ borderColor: '#22222f' }}>
+                      {comments[post.id]?.length === 0 && (
+                        <p className="text-xs mb-2" style={{ color: '#a0a0b0' }}>No comments yet.</p>
+                      )}
+                      {comments[post.id]?.map((comment) => (
+                        <div key={comment.id} className="flex gap-2 mb-2 justify-between items-start">
+                          <div className="flex gap-2">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                              style={{ backgroundColor: getAccentColor(comment.username) }}>
+                              {comment.username?.[0]?.toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-white">{comment.username} </span>
+                              <span className="text-xs" style={{ color: '#e0e0e0' }}>{comment.content}</span>
+                            </div>
+                          </div>
+                          {comment.user_id === user.id && (
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm('Delete this comment?')) return
+                                await supabase.from('comments').delete().eq('id', comment.id)
+                                await fetchComments(post.id)
+                              }}
+                              className="text-xs flex-shrink-0"
+                              style={{ color: '#ef4444' }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <div className="flex gap-2 mt-2">
+                        <input
+                          type="text"
+                          value={commentInput}
+                          onChange={(e) => setCommentInput(e.target.value)}
+                          placeholder="Write a comment..."
+                          className="flex-1 p-2 rounded-lg text-sm focus:outline-none"
+                          style={{ backgroundColor: '#16213e', color: '#ffffff', border: '1px solid #2d2d4e' }}
+                        />
+                        <button
+                          onClick={() => handleAddComment(post.id)}
+                          className="px-3 py-2 rounded-lg text-sm text-white"
+                          style={{ backgroundColor: accentColor }}
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
