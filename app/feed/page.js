@@ -536,7 +536,7 @@ export default function FeedPage() {
         {heroVisible && pinnedAnnouncements.length > 0 && (
           <div className="mb-2">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold" style={{ color: '#7c3aed' }}>📌 PINNED</span>
+              <span className="text-xs font-semibold" style={{ color: '#7c3aed' }}>📢 Announcements</span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
               {pinnedAnnouncements.map((announcement) => (
