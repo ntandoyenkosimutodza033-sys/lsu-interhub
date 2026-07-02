@@ -148,7 +148,7 @@ export default function CommunityPage() {
   }
 
   const fetchMyMembership = async (userId) => {
-    const { data } = await supabase.from('community_members').select('*').eq('community_id', communityId).eq('user_id', userId).single()
+    const { data } = await supabase.from('community_members').select('*').eq('community_id', communityId).eq('user_id', userId).maybeSingle()
     setMyMembership(data || null)
   }
 
