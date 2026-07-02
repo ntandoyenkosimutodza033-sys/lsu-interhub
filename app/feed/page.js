@@ -593,7 +593,7 @@ export default function FeedPage() {
 
         {/* TRENDING TAB */}
         {activeTab === 'Trending' && (
-          <div className="space-y-4">
+          <div className="space-y-1">
             {posts.length === 0 && (
               <p className="text-center py-8" style={{ color: '#a0a0b0' }}>
                 No posts yet. Be the first to post!
@@ -919,7 +919,7 @@ export default function FeedPage() {
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-1">
               {announcements.length === 0 && (
                 <p className="text-center py-8" style={{ color: '#a0a0b0' }}>
                   No announcements yet.
