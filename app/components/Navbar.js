@@ -31,6 +31,10 @@ export default function Navbar() {
       </a>
       {user && (
         <div className="flex items-center gap-4">
+          <a href="/communities" className="text-sm"
+            style={{ color: '#a0a0b0' }}>
+            Communities
+          </a>
           <a href="/profile" className="text-sm"
             style={{ color: '#a0a0b0' }}>
             My Profile
